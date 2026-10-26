@@ -1,0 +1,62 @@
+name: Deploy heyPal! to Namecheap
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js standalone application
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Prepare Standalone Deployment Bundle
+        run: |
+          mkdir -p deploy_bundle
+          # Copy standalone server
+          cp -r .next/standalone/* deploy_bundle/
+          # Copy static assets into standalone .next directory
+          mkdir -p deploy_bundle/.next/static
+          cp -r .next/static/* deploy_bundle/.next/static/
+          # Copy public directory if exists
+          if [ -d "public" ]; then
+            cp -r public deploy_bundle/
+          fi
+          # Copy passenger startup file
+          cp app.js deploy_bundle/
+          # Create empty tmp directory for passenger reload
+          mkdir -p deploy_bundle/tmp
+          touch deploy_bundle/tmp/restart.txt
+
+      - name: Deploy to Namecheap via SSH / RSync
+        if: env.NAMECHEAP_HOST != ''
+        uses: easingthemes/ssh-deploy@v5.0.3
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.NAMECHEAP_SSH_KEY }}
+          ARGS: "-rlgoDzvc -i"
+          SOURCE: "deploy_bundle/"
+          REMOTE_HOST: ${{ secrets.NAMECHEAP_HOST }}
+          REMOTE_USER: ${{ secrets.NAMECHEAP_USER }}
+          TARGET: ${{ secrets.NAMECHEAP_TARGET_DIR || '/home/username/heypal' }}
+          EXCLUDES: "/Events, /node_modules"
