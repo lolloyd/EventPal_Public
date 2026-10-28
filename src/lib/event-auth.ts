@@ -119,6 +119,74 @@ export async function requireAuthenticated(): Promise<HeyPalUser> {
   return getAuthenticatedUser();
 }
 
+export interface EventAuthContext {
+  user: HeyPalUser;
+  isDefaultAdmin: boolean;
+  isCoordinator: boolean;
+}
+
+export function isDefaultAdmin(
+  userOrEmail: Pick<HeyPalUser, "roles" | "identifiers"> | string,
+): boolean {
+  return isHeyPalAdminUser(userOrEmail);
+}
+
+export async function requireDirectorOrCoordinator(): Promise<EventAuthContext> {
+  if (isLocalDemoMode()) {
+    const user: HeyPalUser = {
+      id: "heypal-demo-admin",
+      name: "demo.organizer@heypal.local",
+      email: "demo.organizer@heypal.local",
+      isDemo: true,
+      roles: ["anonymous", "authenticated", "admin"],
+      identifiers: ["demo.organizer@heypal.local"],
+    };
+    return { user, isDefaultAdmin: true, isCoordinator: false };
+  }
+
+  const user = await getAuthenticatedUser();
+  if (isHeyPalAdminUser(user)) {
+    return { user, isDefaultAdmin: true, isCoordinator: false };
+  }
+
+  const { isUserCoordinatorAny } = await import("@/lib/event-repository");
+  const isCoordinator = user.email ? await isUserCoordinatorAny(user.email) : false;
+  return { user, isDefaultAdmin: false, isCoordinator };
+}
+
+export async function requireEventAccess(eventId: string): Promise<EventAuthContext> {
+  if (isLocalDemoMode()) {
+    const user: HeyPalUser = {
+      id: "heypal-demo-admin",
+      name: "demo.organizer@heypal.local",
+      email: "demo.organizer@heypal.local",
+      isDemo: true,
+      roles: ["anonymous", "authenticated", "admin"],
+      identifiers: ["demo.organizer@heypal.local"],
+    };
+    return { user, isDefaultAdmin: true, isCoordinator: false };
+  }
+
+  const user = await getAuthenticatedUser();
+  if (isHeyPalAdminUser(user)) {
+    return { user, isDefaultAdmin: true, isCoordinator: false };
+  }
+
+  const { isUserCoordinatorForEvent, getEvent } = await import("@/lib/event-repository");
+  const event = await getEvent(eventId);
+  const isCreator = Boolean(
+    event?.createdBy &&
+    user.email &&
+    event.createdBy.toLowerCase() === user.email.toLowerCase()
+  );
+  const isAssigned = user.email ? await isUserCoordinatorForEvent(eventId, user.email) : false;
+  if (isAssigned || isCreator) {
+    return { user, isDefaultAdmin: false, isCoordinator: true };
+  }
+
+  throw new Error("You do not have coordinator access to this event.");
+}
+
 export async function requireAdmin(): Promise<HeyPalUser> {
   if (isLocalDemoMode()) {
     return {
@@ -133,7 +201,63 @@ export async function requireAdmin(): Promise<HeyPalUser> {
 
   const user = await getAuthenticatedUser();
   if (!isHeyPalAdminUser(user)) {
-    throw new Error("A heyPal! organizer role is required.");
+    throw new Error("A heyPal! default organizer role is required.");
   }
   return user;
+}
+
+export async function canUserCreateEvent(
+  user: HeyPalUser,
+): Promise<{ allowed: boolean; reason?: string }> {
+  // Default admins are never restricted
+  if (isHeyPalAdminUser(user)) {
+    return { allowed: true };
+  }
+
+  if (!user.email) {
+    return { allowed: false, reason: "An email address is required to create an event." };
+  }
+
+  const { isUserOnCreatorList } = await import("@/lib/event-repository");
+  const onList = await isUserOnCreatorList(user.email);
+  if (onList) {
+    return {
+      allowed: false,
+      reason:
+        "You belong to the Event Creator registry and cannot create new events without administrator approval.",
+    };
+  }
+
+  return { allowed: true };
+}
+
+export function getPublicOrigin(request?: Request): string {
+  // 1. Explicit environment variable takes top precedence
+  if (process.env.HEYPAL_PUBLIC_ORIGIN) {
+    return process.env.HEYPAL_PUBLIC_ORIGIN.replace(/\/+$/, "");
+  }
+
+  // 2. Derive from request headers or URL
+  if (request) {
+    const proto =
+      request.headers.get("x-forwarded-proto") ||
+      (process.env.NODE_ENV === "production" ? "https" : "http");
+    const host =
+      request.headers.get("x-forwarded-host") ||
+      request.headers.get("host");
+
+    if (host) {
+      return `${proto}://${host}`.replace(/\/+$/, "");
+    }
+
+    try {
+      const url = new URL(request.url);
+      const finalProto = process.env.NODE_ENV === "production" ? "https" : url.protocol.replace(":", "");
+      return `${finalProto}://${url.host}`.replace(/\/+$/, "");
+    } catch {
+      // Fall through to localhost
+    }
+  }
+
+  return "http://localhost:3000";
 }

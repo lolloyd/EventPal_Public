@@ -2,14 +2,16 @@
 
 import { useDeferredValue, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Plus, Search, CalendarDays, MapPin } from "lucide-react";
+import { ArrowUpRight, Plus, Search, CalendarDays, MapPin, Globe, Lock, QrCode } from "lucide-react";
 import type { EventMetrics, EventRecord, EventStatus } from "@/lib/event-models";
 
-type StatusFilter = "all" | EventStatus;
+type StatusFilter = "all" | EventStatus | "public" | "private";
 
 const filters: { label: string; value: StatusFilter }[] = [
   { label: "All Events", value: "all" },
   { label: "Active", value: "active" },
+  { label: "Public", value: "public" },
+  { label: "Private", value: "private" },
   { label: "Draft", value: "draft" },
   { label: "Archived", value: "archived" },
 ];
@@ -28,15 +30,22 @@ function formatDateRange(startsAt: string, endsAt: string) {
 export function EventList({
   events,
   metrics,
+  isDefaultAdmin = true,
 }: {
   events: EventRecord[];
   metrics: Record<string, EventMetrics>;
+  isDefaultAdmin?: boolean;
 }) {
   const [status, setStatus] = useState<StatusFilter>("all");
   const [search, setSearch] = useState("");
   const deferredSearch = useDeferredValue(search.trim().toLocaleLowerCase());
   const filteredEvents = events.filter((event) => {
-    const matchesStatus = status === "all" || event.status === status;
+    let matchesStatus = false;
+    if (status === "all") matchesStatus = true;
+    else if (status === "public") matchesStatus = !event.isPrivate;
+    else if (status === "private") matchesStatus = Boolean(event.isPrivate);
+    else matchesStatus = event.status === status;
+
     const matchesSearch = `${event.name} ${event.location}`.toLocaleLowerCase().includes(deferredSearch);
     return matchesStatus && matchesSearch;
   });
@@ -123,17 +132,28 @@ export function EventList({
                   </td>
 
                   <td className="py-4 px-4 whitespace-nowrap">
-                    <span
-                      className={`inline-block px-2.5 py-1 text-label-mono-tag font-bold uppercase shadow-brutal-sm ${
-                        isEventActive
-                          ? "bg-secondary text-white"
-                          : isEventDraft
-                            ? "bg-tertiary-fixed text-charcoal-ink"
-                            : "bg-surface-container-highest text-charcoal-ink"
-                      }`}
-                    >
-                      {event.status}
-                    </span>
+                    <div className="flex flex-col gap-1 items-start">
+                      <span
+                        className={`inline-block px-2.5 py-0.5 text-label-mono-tag font-bold uppercase shadow-brutal-sm ${
+                          isEventActive
+                            ? "bg-secondary text-white"
+                            : isEventDraft
+                              ? "bg-tertiary-fixed text-charcoal-ink"
+                              : "bg-surface-container-highest text-charcoal-ink"
+                        }`}
+                      >
+                        {event.status}
+                      </span>
+                      {event.isPrivate ? (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase text-charcoal-ink/80 bg-paper-bright px-1.5 py-0.5 border border-charcoal-ink/20">
+                          <Lock className="w-2.5 h-2.5 text-charcoal-ink" /> Private
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[9px] font-mono font-bold uppercase text-secondary bg-secondary/10 px-1.5 py-0.5 border border-secondary/20">
+                          <Globe className="w-2.5 h-2.5 text-secondary" /> Public
+                        </span>
+                      )}
+                    </div>
                   </td>
 
                   <td className="py-4 px-4 text-right font-display-hero font-bold text-base text-primary">
@@ -145,13 +165,24 @@ export function EventList({
                   </td>
 
                   <td className="py-4 px-4 text-center whitespace-nowrap">
-                    <Link
-                      className="btn-brutal inline-flex items-center justify-center w-8 h-8 bg-surface text-charcoal-ink border border-charcoal-ink/20 shadow-brutal-sm hover:bg-primary hover:text-white hover:border-primary transition-colors"
-                      href={`/admin/events/${event.id}`}
-                      aria-label={`Manage ${event.name}`}
-                    >
-                      <ArrowUpRight className="w-4 h-4" />
-                    </Link>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <Link
+                        className="btn-brutal inline-flex items-center justify-center w-8 h-8 bg-paper-bright text-charcoal-ink border border-charcoal-ink/30 shadow-brutal-sm hover:bg-[#c85038] hover:text-white hover:border-charcoal-ink transition-colors"
+                        href={`/admin/events/${event.id}/qr`}
+                        aria-label={`QR Generator for ${event.name}`}
+                        title={`QR Generator for ${event.name}`}
+                      >
+                        <QrCode className="w-4 h-4" />
+                      </Link>
+                      <Link
+                        className="btn-brutal inline-flex items-center justify-center w-8 h-8 bg-surface text-charcoal-ink border border-charcoal-ink/20 shadow-brutal-sm hover:bg-primary hover:text-white hover:border-primary transition-colors"
+                        href={`/admin/events/${event.id}`}
+                        aria-label={`Manage ${event.name}`}
+                        title={`Manage ${event.name}`}
+                      >
+                        <ArrowUpRight className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               );
@@ -162,16 +193,27 @@ export function EventList({
         {filteredEvents.length === 0 && (
           <div className="py-16 text-center">
             <p className="font-display-hero text-xl text-charcoal-ink mb-2">
-              {events.length === 0 ? "No events created yet." : "No gatherings match the current filter."}
+              {events.length === 0
+                ? isDefaultAdmin
+                  ? "No events created yet."
+                  : "No events assigned yet."
+                : "No gatherings match the current filter."}
             </p>
             {events.length === 0 && (
-              <Link
-                href="/admin/events/new"
-                className="btn-brutal inline-flex items-center gap-2 px-4 py-2 mt-2 bg-primary text-white text-xs font-bold uppercase tracking-wider shadow-brutal"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Initialize First Event</span>
-              </Link>
+              <div className="flex flex-col items-center gap-3 mt-3">
+                <p className="text-xs text-on-surface-variant font-mono max-w-md mx-auto">
+                  {isDefaultAdmin
+                    ? "Initialize your first event to start gathering community photos and telemetry."
+                    : "You do not have any assigned events yet. Create a new event to automatically become its Event Coordinator."}
+                </p>
+                <Link
+                  href="/admin/events/new"
+                  className="btn-brutal inline-flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-xs font-bold uppercase tracking-wider shadow-brutal hover:bg-primary-dark transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Create An Event</span>
+                </Link>
+              </div>
             )}
           </div>
         )}

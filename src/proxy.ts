@@ -23,27 +23,21 @@ export function proxy(request: NextRequest) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  // Admin route protection: verify organizer role
-  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    if (!user.isAdmin) {
-      if (isHtmlNavigation) {
-        return NextResponse.redirect(new URL("/events?error=admin_required", request.url));
-      }
-      return NextResponse.json({ error: "Organizer role required" }, { status: 403 });
-    }
-  }
-
   return NextResponse.next();
 }
 
 export default proxy;
 
 export const config = {
+  // NOTE: /api/upload and /api/events are intentionally NOT matched here.
+  // - Those route handlers perform their own authentication.
+  // - When proxy runs, Next.js buffers request bodies only up to 10 MB
+  //   (proxyClientMaxBodySize) and silently truncates the rest, which corrupts
+  //   larger photo uploads.
+  // - The public photo wall polls /api/events/[id]/photos without a session.
   matcher: [
     "/admin/:path*",
     "/events/:path*",
-    "/api/upload/:path*",
-    "/api/events/:path*",
     "/api/admin/:path*",
   ],
 };

@@ -10,6 +10,8 @@ export interface EventRecord {
   location: string;
   status: EventStatus;
   coverImageBlobName: string | null;
+  isPhotoWallPublic?: boolean;
+  isPrivate?: boolean;
   createdBy: string;
   createdAt: string;
   updatedAt: string;
@@ -63,4 +65,19 @@ export interface RaffleDrawRecord {
   uploadedAt: string;
   drawnAt: string;
   disposition: RaffleDrawDisposition;
+}
+
+export interface EventCoordinatorRecord {
+  eventId: string;
+  email: string;
+  assignedAt: string;
+  assignedBy: string;
+}
+
+export interface EventCreatorRecord {
+  email: string;
+  name: string | null;
+  eventId: string | null;
+  eventName?: string | null;
+  createdAt: string;
 }

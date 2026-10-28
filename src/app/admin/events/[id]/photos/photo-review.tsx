@@ -112,7 +112,7 @@ export function PhotoReview({
                     type="button"
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={photo.previewUrl} alt="" />
+                    <img src={photo.previewUrl} alt="" loading="lazy" decoding="async" />
                     <span className="photo-review-expand" aria-hidden="true"><Expand size={18} /></span>
                   </button>
                 ) : (

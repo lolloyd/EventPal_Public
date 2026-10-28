@@ -1,20 +1,22 @@
 import { Suspense } from "react";
 import Link from "next/link";
-import { Archive, ChevronLeft, Dices, GalleryHorizontalEnd, Images, QrCode } from "lucide-react";
+import { Archive, ChevronLeft, Dices, GalleryHorizontalEnd, Globe, Images, Lock, QrCode } from "lucide-react";
 import { notFound } from "next/navigation";
 import { EventEditor } from "@/app/admin/event-editor";
+import { CoordinatorManager } from "@/app/admin/events/[id]/coordinator-manager";
 import type { Contributor } from "@/app/admin/contributor-table";
-import { requireAdmin } from "@/lib/event-auth";
-import { getEvent, listEventPhotos } from "@/lib/event-repository";
+import { requireEventAccess } from "@/lib/event-auth";
+import { getEvent, listEventCoordinators, listEventPhotos } from "@/lib/event-repository";
 import { getPhotoReadUrl, getUploadReadUrl } from "@/lib/local-storage";
 
 async function EventEditContent({
   params,
 }: Pick<PageProps<"/admin/events/[id]">, "params">) {
   const { id } = await params;
-  await requireAdmin();
+  const auth = await requireEventAccess(id);
   const event = await getEvent(id);
   if (!event) notFound();
+  const coordinators = await listEventCoordinators(id);
   const coverImageUrl = event.coverImageBlobName
     ? getUploadReadUrl(event.coverImageBlobName)
     : null;
@@ -49,65 +51,92 @@ async function EventEditContent({
 
   return (
     <main className="admin-main">
-      <Link className="inline-flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-wider text-[#111816] hover:text-[#C85038] mb-4" href="/admin">
+      <Link className="inline-flex items-center gap-1 font-mono text-xs font-bold uppercase tracking-wider text-charcoal-ink hover:text-primary mb-4" href="/admin">
         <ChevronLeft size={16} /> ← Director Terminal
       </Link>
-      <div className="admin-title-row editor-title-row border-b-2 border-[#111816] pb-6 mb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+      <div className="admin-title-row editor-title-row border-b-2 border-charcoal-ink/20 pb-6 mb-8 flex flex-col lg:flex-row lg:items-end justify-between gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-[#18372F] text-[#FAF9F3] px-2.5 py-0.5 border border-[#111816]">
+          <div className="flex flex-wrap items-center gap-2.5 mb-2">
+            <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-secondary text-white px-2.5 py-0.5 border border-charcoal-ink/20 shadow-brutal-sm">
               EVENT DIRECTOR // {event.id.slice(0, 8).toUpperCase()}
             </span>
-            <span className="text-[10px] font-serif italic text-[#C85038] font-bold">
-              Bawal Epal; use heyPal!
+            {event.isPrivate ? (
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-charcoal-ink text-paper-bright px-2.5 py-0.5 border border-charcoal-ink shadow-brutal-sm inline-flex items-center gap-1">
+                <Lock size={11} /> PRIVATE ALBUM // UNLISTED
+              </span>
+            ) : (
+              <span className="text-[10px] font-mono font-bold uppercase tracking-widest bg-electric-lime text-charcoal-ink px-2.5 py-0.5 border border-charcoal-ink shadow-brutal-sm inline-flex items-center gap-1">
+                <Globe size={11} /> PUBLIC ALBUM // LISTED
+              </span>
+            )}
+            <span className="text-[10px] font-serif italic text-primary font-bold">
+              Don't be Epal; use heyPal!
             </span>
           </div>
-          <h1 className="font-['Bodoni_Moda',serif] text-3xl sm:text-4xl font-medium italic text-[#111816]">
+          <h1 className="font-serif text-3xl sm:text-4xl font-medium italic text-on-surface">
             {event.name}
           </h1>
-          <p className="text-xs font-mono uppercase tracking-wider text-[#111816]/70 mt-1">
+          <p className="text-xs font-mono uppercase tracking-wider text-on-surface-variant mt-1">
             Archival parameters and live telemetry. Changes reflect immediately on attendee consoles.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2.5">
           <Link
-            className="border-2 border-[#111816] bg-[#FFDEA4] text-[#111816] shadow-[2px_2px_0px_#111816] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#111816] font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all"
+            className={`border-2 border-charcoal-ink shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all ${event.isPhotoWallPublic ? "bg-secondary text-white" : "bg-tertiary-fixed text-on-tertiary-fixed"
+              }`}
             href={`/admin/events/${event.id}/photo-wall`}
+            title={event.isPhotoWallPublic ? "Public Picture Wall is enabled" : "Picture Wall is private"}
           >
             <GalleryHorizontalEnd size={15} />
-            Photo Wall
+            <span>Photo Wall</span>
+            {event.isPhotoWallPublic && (
+              <span className="w-2 h-2 rounded-full bg-electric-lime animate-pulse ml-0.5" />
+            )}
           </Link>
           <Link
-            className="border-2 border-[#111816] bg-[#FAF9F3] text-[#111816] shadow-[2px_2px_0px_#111816] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#111816] font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all"
+            className="border-2 border-charcoal-ink bg-surface-container text-on-surface shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all"
             href={`/admin/events/${event.id}/wheel`}
           >
             <Dices size={15} />
             Raffle Wheel
           </Link>
           <Link
-            className="border-2 border-[#111816] bg-[#FAF9F3] text-[#111816] shadow-[2px_2px_0px_#111816] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#111816] font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all"
+            className="border-2 border-charcoal-ink bg-surface-container text-on-surface shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all"
             href={`/admin/events/${event.id}/export`}
           >
             <Archive size={15} />
             Export Archive
           </Link>
           <Link
-            className="border-2 border-[#111816] bg-[#FAF9F3] text-[#111816] shadow-[2px_2px_0px_#111816] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#111816] font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all"
+            className="border-2 border-charcoal-ink bg-surface-container text-on-surface shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all"
             href={`/admin/events/${event.id}/photos`}
           >
             <Images size={15} />
             Submissions
           </Link>
           <Link
-            className="border-2 border-[#111816] bg-[#18372F] text-[#FAF9F3] shadow-[2px_2px_0px_#111816] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[3px_3px_0px_#111816] font-mono text-xs uppercase font-bold px-3 py-2 flex items-center gap-1.5 transition-all"
+            className="border-2 border-charcoal-ink bg-[#c85038] text-white shadow-brutal-sm hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-brutal hover:bg-[#a73823] font-mono text-xs uppercase font-extrabold px-3.5 py-2 flex items-center gap-1.5 transition-all"
             href={`/admin/events/${event.id}/qr`}
+            style={{ color: "#ffffff" }}
+            title="Generate & print QR code poster for attendees"
           >
-            <QrCode size={15} />
-            QR Broadside
+            <QrCode size={16} className="text-white shrink-0" />
+            <span>QR Generator</span>
           </Link>
         </div>
       </div>
       <EventEditor coverImageUrl={coverImageUrl} contributors={contributors} event={event} />
+      <CoordinatorManager
+        eventId={event.id}
+        coordinators={coordinators}
+        isDefaultAdmin={auth.isDefaultAdmin}
+        currentUserEmail={auth.user.email}
+        canManageCoordinators={
+          auth.isDefaultAdmin ||
+          (Boolean(auth.user.email) && event.createdBy.toLowerCase() === auth.user.email?.toLowerCase()) ||
+          auth.isCoordinator
+        }
+      />
     </main>
   );
 }

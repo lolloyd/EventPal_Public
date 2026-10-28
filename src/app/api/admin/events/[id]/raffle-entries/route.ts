@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/event-auth";
+import { requireEventAccess } from "@/lib/event-auth";
 import { getPhotoReadUrl } from "@/lib/local-storage";
 import { getEvent, listEventPhotos, listRaffleDraws, saveRaffleDraw } from "@/lib/event-repository";
 import { drawRaffleWinner, getRaffleEntries } from "@/lib/raffle-engine";
@@ -25,13 +25,13 @@ export async function GET(
   request: Request,
   { params }: RouteContext<"/api/admin/events/[id]/raffle-entries">,
 ) {
+  const { id } = await params;
   try {
-    await requireAdmin();
+    await requireEventAccess(id);
   } catch {
-    return NextResponse.json({ error: "Organizer access is required." }, { status: 403 });
+    return NextResponse.json({ error: "Coordinator or organizer access is required." }, { status: 403 });
   }
 
-  const { id } = await params;
   const event = await getEvent(id);
   if (!event) return NextResponse.json({ error: "Event not found." }, { status: 404 });
   const query = new URL(request.url).searchParams;
@@ -60,13 +60,13 @@ export async function POST(
   request: Request,
   { params }: RouteContext<"/api/admin/events/[id]/raffle-entries">,
 ) {
+  const { id } = await params;
   try {
-    await requireAdmin();
+    await requireEventAccess(id);
   } catch {
-    return NextResponse.json({ error: "Organizer access is required." }, { status: 403 });
+    return NextResponse.json({ error: "Coordinator or organizer access is required." }, { status: 403 });
   }
 
-  const { id } = await params;
   const event = await getEvent(id);
   if (!event) return NextResponse.json({ error: "Event not found." }, { status: 404 });
 

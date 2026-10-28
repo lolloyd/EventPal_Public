@@ -4,7 +4,7 @@ import { ThemeScript, ThemeSync } from "@/app/theme";
 
 export const metadata: Metadata = {
   title: "heyPal! | Private Event Albums",
-  description: "One shared place for the photos, faces, and little details that make an event yours. Bawal Epal; use heyPal!.",
+  description: "One shared place for the photos, faces, and little details that make an event yours. Don't be Epal; use heyPal!.",
   icons: {
     icon: "/favicon.ico",
   },
@@ -18,7 +18,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
-          href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400..900;1,6..96,400..900&family=Hanken+Grotesk:ital,wght@0,300..900;1,300..900&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400..800;1,400..800&family=Hanken+Grotesk:ital,wght@0,300..900;1,300..900&display=swap"
           rel="stylesheet"
         />
       </head>

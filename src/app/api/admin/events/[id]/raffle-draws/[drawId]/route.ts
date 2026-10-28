@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/event-auth";
+import { requireEventAccess } from "@/lib/event-auth";
 import { getEvent, updateRaffleDraw } from "@/lib/event-repository";
 
 const dispositionSchema = z.object({
@@ -11,13 +11,12 @@ export async function PATCH(
   request: Request,
   { params }: RouteContext<"/api/admin/events/[id]/raffle-draws/[drawId]">,
 ) {
-  try {
-    await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "Organizer access is required." }, { status: 403 });
-  }
-
   const { id, drawId } = await params;
+  try {
+    await requireEventAccess(id);
+  } catch {
+    return NextResponse.json({ error: "Coordinator or organizer access is required." }, { status: 403 });
+  }
   const event = await getEvent(id);
   if (!event) return NextResponse.json({ error: "Event not found." }, { status: 404 });
 

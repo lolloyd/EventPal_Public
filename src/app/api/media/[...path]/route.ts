@@ -21,12 +21,6 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ path: string[] }> },
 ) {
-  try {
-    await requireAuthenticated();
-  } catch {
-    return new NextResponse("Unauthorized", { status: 401 });
-  }
-
   const { path: pathSegments } = await params;
   if (!pathSegments || pathSegments.length === 0) {
     return new NextResponse("Not Found", { status: 404 });
@@ -34,6 +28,32 @@ export async function GET(
 
   const decodedSegments = pathSegments.map((segment) => decodeURIComponent(segment));
   const subPath = decodedSegments.join("/");
+
+  // Event covers are public assets (visible on attendee pages, public photo walls, and QR codes)
+  let isPublicAsset = subPath.startsWith("covers/");
+  if (!isPublicAsset && subPath.startsWith("photos/")) {
+    const parts = subPath.split("/");
+    if (parts.length >= 3) {
+      const eventId = parts[1];
+      try {
+        const { getEvent } = await import("@/lib/event-repository");
+        const event = await getEvent(eventId);
+        if (event && Boolean(event.isPhotoWallPublic)) {
+          isPublicAsset = true;
+        }
+      } catch (err) {
+        console.warn("[heypal] Failed to verify public status for photo media", err);
+      }
+    }
+  }
+
+  if (!isPublicAsset) {
+    try {
+      await requireAuthenticated();
+    } catch {
+      return new NextResponse("Unauthorized", { status: 401 });
+    }
+  }
 
   let resolvedFilePath: string;
   try {
@@ -56,13 +76,17 @@ export async function GET(
   const contentType = contentTypeMap[ext] || "application/octet-stream";
   const etag = `W/"${stat.size}-${Math.floor(stat.mtimeMs)}"`;
 
+  const cacheHeader = isPublicAsset
+    ? "public, max-age=31536000, immutable"
+    : "private, max-age=86400, stale-while-revalidate=604800";
+
   const ifNoneMatch = request.headers.get("if-none-match");
   if (ifNoneMatch && ifNoneMatch === etag) {
     return new NextResponse(null, {
       status: 304,
       headers: {
         ETag: etag,
-        "Cache-Control": "private, max-age=86400, stale-while-revalidate=604800",
+        "Cache-Control": cacheHeader,
       },
     });
   }
@@ -75,7 +99,7 @@ export async function GET(
     headers: {
       "Content-Type": contentType,
       "Content-Length": String(stat.size),
-      "Cache-Control": "private, max-age=86400, stale-while-revalidate=604800",
+      "Cache-Control": cacheHeader,
       ETag: etag,
       "Last-Modified": new Date(stat.mtimeMs).toUTCString(),
       "X-Content-Type-Options": "nosniff",

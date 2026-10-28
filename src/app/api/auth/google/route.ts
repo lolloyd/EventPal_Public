@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { randomBytes } from "node:crypto";
-import { isLocalDemoMode } from "@/lib/event-auth";
+import { isLocalDemoMode, getPublicOrigin } from "@/lib/event-auth";
 import { setSessionCookie } from "@/lib/session";
 
 function sanitizeCallbackUrl(url: string | null): string {
@@ -14,7 +14,8 @@ function sanitizeCallbackUrl(url: string | null): string {
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const publicOrigin = getPublicOrigin(request);
   const targetCallbackUrl = sanitizeCallbackUrl(searchParams.get("callbackUrl") || searchParams.get("redirect"));
   const clientId = process.env.GOOGLE_CLIENT_ID;
 
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
         name: isAdminTarget ? "Lloyd Miguel (Demo)" : "Demo Attendee",
         isAdmin: isAdminTarget,
       });
-      return NextResponse.redirect(new URL(targetCallbackUrl, origin));
+      return NextResponse.redirect(new URL(targetCallbackUrl, publicOrigin));
     }
 
     return NextResponse.json(
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     maxAge: 10 * 60, // 10 minutes
   });
 
-  const redirectUri = `${origin}/api/auth/callback/google`;
+  const redirectUri = `${publicOrigin}/api/auth/callback/google`;
   const googleAuthUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   googleAuthUrl.searchParams.set("client_id", clientId);
   googleAuthUrl.searchParams.set("redirect_uri", redirectUri);

@@ -1,9 +1,10 @@
 "use client";
 
 import { useActionState, useRef, useState } from "react";
-import { CloudUpload, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
+import { CloudUpload, ImagePlus, LoaderCircle, Lock, Trash2, Tv } from "lucide-react";
 import { saveEventAction } from "@/app/admin/event-actions";
 import { type Contributor, ContributorTable } from "@/app/admin/contributor-table";
+import { DateTimePicker } from "@/app/admin/date-time-picker";
 import type { EventRecord } from "@/lib/event-models";
 
 function toInputValue(value: string) {
@@ -64,12 +65,12 @@ export function EventEditor({
     if (fileInput.current) fileInput.current.value = "";
   }
 
+  const [startsAt, setStartsAt] = useState(event ? toInputValue(event.startsAt) : "");
+  const [endsAt, setEndsAt] = useState(event ? toInputValue(event.endsAt) : "");
   const dateRangeInvalid =
-    event && Date.parse(event.endsAt) < Date.parse(event.startsAt);
-  const startsAt = event ? toInputValue(event.startsAt) : "";
-  const endsAt = event ? toInputValue(event.endsAt) : "";
+    Boolean(startsAt && endsAt && Date.parse(endsAt) < Date.parse(startsAt));
   const submitButton = (
-    <button className="primary-button" disabled={isPending || isUploading || Boolean(selectedFile)} type="submit">
+    <button className="primary-button" disabled={isPending || isUploading || Boolean(selectedFile) || Boolean(dateRangeInvalid)} type="submit">
       {isPending ? "Saving…" : event ? "Save changes" : "Create event"}
     </button>
   );
@@ -94,14 +95,27 @@ export function EventEditor({
           </label>
 
           <div className="form-field-row">
-            <label className="form-field">
+            <div className="form-field">
               <span>Starts <b aria-hidden="true">*</b></span>
-              <input defaultValue={startsAt} name="startsAt" required type="datetime-local" />
-            </label>
-            <label className="form-field">
+              <DateTimePicker
+                name="startsAt"
+                value={startsAt}
+                onChange={setStartsAt}
+                required
+                placeholder="Select start date & time"
+              />
+            </div>
+            <div className="form-field">
               <span>Ends <b aria-hidden="true">*</b></span>
-              <input defaultValue={endsAt} name="endsAt" required type="datetime-local" />
-            </label>
+              <DateTimePicker
+                name="endsAt"
+                value={endsAt}
+                onChange={setEndsAt}
+                required
+                placeholder="Select end date & time"
+                align="right"
+              />
+            </div>
           </div>
 
           <label className="form-field">
@@ -128,14 +142,69 @@ export function EventEditor({
             <span className="field-hint">Optional · up to 1,000 characters</span>
           </label>
 
-          <label className="form-field form-status-field">
+          <label className="form-field">
             <span>Status</span>
             <select defaultValue={event?.status ?? "draft"} name="status">
-              <option value="draft">Draft</option>
-              <option value="active">Active</option>
-              <option value="archived">Archived</option>
+              <option value="draft">Draft — Preparation stage (only coordinators can view and upload)</option>
+              <option value="active">Active — Live event (guests can scan QR code and upload photos)</option>
+              <option value="archived">Archived — Event concluded (read-only album preserved)</option>
             </select>
           </label>
+
+          <div className="space-y-2">
+            <span className="font-semibold text-xs text-ink">Visibility & Access Options</span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-stretch">
+              {/* Private Event Card */}
+              <label className="relative flex items-start gap-3.5 p-3.5 bg-paper-bright border-2 border-charcoal-ink shadow-brutal-sm hover:border-[#c85038] hover:shadow-brutal-coral transition-all cursor-pointer select-none h-full">
+                <input
+                  type="checkbox"
+                  name="isPrivate"
+                  defaultChecked={event?.isPrivate ?? false}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded-none border-2 border-charcoal-ink accent-[#c85038] cursor-pointer"
+                  style={{ width: "16px", height: "16px", minHeight: "16px", padding: 0 }}
+                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-xs uppercase tracking-wider text-charcoal-ink flex items-center gap-1">
+                      <Lock className="w-3.5 h-3.5 text-charcoal-ink" />
+                      Private Event
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-charcoal-ink text-paper-bright text-[9px] font-mono font-bold tracking-wider">
+                      UNLISTED
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-on-surface-variant font-normal leading-relaxed">
+                    Hidden from &ldquo;Find your album&rdquo;. Accessible only via direct link or QR code.
+                  </p>
+                </div>
+              </label>
+
+              {/* Public Picture Wall Card */}
+              <label className="relative flex items-start gap-3.5 p-3.5 bg-paper-bright border-2 border-charcoal-ink shadow-brutal-sm hover:border-[#c85038] hover:shadow-brutal-coral transition-all cursor-pointer select-none h-full">
+                <input
+                  type="checkbox"
+                  name="isPhotoWallPublic"
+                  defaultChecked={event?.isPhotoWallPublic ?? false}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded-none border-2 border-charcoal-ink accent-[#c85038] cursor-pointer"
+                  style={{ width: "16px", height: "16px", minHeight: "16px", padding: 0 }}
+                />
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-bold text-xs uppercase tracking-wider text-charcoal-ink flex items-center gap-1">
+                      <Tv className="w-3.5 h-3.5 text-[#0f3a33]" />
+                      Public Picture Wall
+                    </span>
+                    <span className="px-1.5 py-0.5 bg-[#0f3a33] text-white text-[9px] font-mono font-bold tracking-wider">
+                      PROJECTOR
+                    </span>
+                  </div>
+                  <p className="text-[12px] text-on-surface-variant font-normal leading-relaxed">
+                    Live projector / smart TV link accessible without signing in.
+                  </p>
+                </div>
+              </label>
+            </div>
+          </div>
 
           {event && <div className="event-save-actions">{submitButton}</div>}
 

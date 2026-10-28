@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/event-auth";
+import { requireDirectorOrCoordinator } from "@/lib/event-auth";
 import { uploadEventCover } from "@/lib/local-storage";
 
 const allowedTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -14,9 +14,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    await requireAdmin();
+    await requireDirectorOrCoordinator();
   } catch {
-    return NextResponse.json({ error: "Organizer access is required." }, { status: 403 });
+    return NextResponse.json({ error: "Organizer or coordinator access is required." }, { status: 403 });
   }
 
   let formData: FormData;

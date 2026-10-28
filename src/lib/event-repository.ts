@@ -1,11 +1,13 @@
 import { getDb } from "@/lib/db";
 import { isLocalDemoMode } from "@/lib/event-auth";
-import type { EventMetrics, EventRecord, PhotoRecord, RaffleDrawRecord } from "@/lib/event-models";
+import type { EventCoordinatorRecord, EventCreatorRecord, EventMetrics, EventRecord, PhotoRecord, RaffleDrawRecord } from "@/lib/event-models";
 
 interface DemoStore {
   events: EventRecord[];
   photos: PhotoRecord[];
   raffleDraws: RaffleDrawRecord[];
+  coordinators: EventCoordinatorRecord[];
+  eventCreators: EventCreatorRecord[];
 }
 
 declare global {
@@ -35,6 +37,8 @@ function createDemoStore(): DemoStore {
       location: "The Foundry, Seattle",
       status: "active",
       coverImageBlobName: null,
+      isPhotoWallPublic: true,
+      isPrivate: false,
       createdBy: "lloyd.miguel@gmail.com",
       createdAt,
       updatedAt,
@@ -48,6 +52,7 @@ function createDemoStore(): DemoStore {
       location: "Studio North, Portland",
       status: "draft",
       coverImageBlobName: null,
+      isPrivate: false,
       createdBy: "lloyd.miguel@gmail.com",
       createdAt,
       updatedAt,
@@ -61,6 +66,7 @@ function createDemoStore(): DemoStore {
       location: "Cedar Lodge, Bend",
       status: "archived",
       coverImageBlobName: null,
+      isPrivate: false,
       createdBy: "lloyd.miguel@gmail.com",
       createdAt,
       updatedAt,
@@ -72,12 +78,14 @@ function createDemoStore(): DemoStore {
     { id: "demo-photo-3", eventId: events[0].id, blobUrl: "", uploadedBy: "alex@heypal.local", uploadedAt: createdAt, caption: null, status: "approved" },
     { id: "demo-photo-4", eventId: events[1].id, blobUrl: "", uploadedBy: "sam@heypal.local", uploadedAt: createdAt, caption: null, status: "flagged" },
   ];
-  return { events, photos, raffleDraws: [] };
+  return { events, photos, raffleDraws: [], coordinators: [], eventCreators: [] };
 }
 
 function getDemoStore() {
   globalThis.heypalDemoStore ??= createDemoStore();
   globalThis.heypalDemoStore.raffleDraws ??= [];
+  globalThis.heypalDemoStore.coordinators ??= [];
+  globalThis.heypalDemoStore.eventCreators ??= [];
   return globalThis.heypalDemoStore;
 }
 
@@ -99,6 +107,8 @@ function mapEventRow(row: Record<string, unknown>): EventRecord {
     location: String(row.location),
     status: row.status as EventRecord["status"],
     coverImageBlobName: row.coverImageBlobName ? String(row.coverImageBlobName) : null,
+    isPhotoWallPublic: Boolean(row.isPhotoWallPublic),
+    isPrivate: Boolean(row.isPrivate),
     createdBy: String(row.createdBy),
     createdAt: String(row.createdAt),
     updatedAt: String(row.updatedAt),
@@ -168,8 +178,8 @@ export async function saveEvent(event: EventRecord): Promise<EventRecord> {
   const stmt = db.prepare(`
     INSERT INTO events (
       id, name, description, startsAt, endsAt, location, status,
-      coverImageBlobName, createdBy, createdAt, updatedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      coverImageBlobName, isPhotoWallPublic, isPrivate, createdBy, createdAt, updatedAt
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       description = excluded.description,
@@ -178,6 +188,8 @@ export async function saveEvent(event: EventRecord): Promise<EventRecord> {
       location = excluded.location,
       status = excluded.status,
       coverImageBlobName = excluded.coverImageBlobName,
+      isPhotoWallPublic = excluded.isPhotoWallPublic,
+      isPrivate = excluded.isPrivate,
       createdBy = excluded.createdBy,
       createdAt = excluded.createdAt,
       updatedAt = excluded.updatedAt
@@ -192,12 +204,46 @@ export async function saveEvent(event: EventRecord): Promise<EventRecord> {
     event.location,
     event.status,
     event.coverImageBlobName,
+    event.isPhotoWallPublic ? 1 : 0,
+    event.isPrivate ? 1 : 0,
     event.createdBy,
     event.createdAt,
     event.updatedAt,
   );
 
   return event;
+}
+
+export async function setPhotoWallPublic(id: string, isPublic: boolean): Promise<boolean> {
+  if (isLocalDemoMode()) {
+    const store = getDemoStore();
+    const event = store.events.find((e) => e.id === id);
+    if (!event) return false;
+    event.isPhotoWallPublic = isPublic;
+    event.updatedAt = new Date().toISOString();
+    return true;
+  }
+
+  const db = getDb();
+  const stmt = db.prepare("UPDATE events SET isPhotoWallPublic = ?, updatedAt = ? WHERE id = ?");
+  const result = stmt.run(isPublic ? 1 : 0, new Date().toISOString(), id);
+  return result.changes > 0;
+}
+
+export async function setEventPrivacy(id: string, isPrivate: boolean): Promise<boolean> {
+  if (isLocalDemoMode()) {
+    const store = getDemoStore();
+    const event = store.events.find((e) => e.id === id);
+    if (!event) return false;
+    event.isPrivate = isPrivate;
+    event.updatedAt = new Date().toISOString();
+    return true;
+  }
+
+  const db = getDb();
+  const stmt = db.prepare("UPDATE events SET isPrivate = ?, updatedAt = ? WHERE id = ?");
+  const result = stmt.run(isPrivate ? 1 : 0, new Date().toISOString(), id);
+  return result.changes > 0;
 }
 
 export async function getEventMetrics(): Promise<Record<string, EventMetrics>> {
@@ -264,6 +310,15 @@ export async function listApprovedEventPhotos(eventId: string): Promise<PhotoRec
     ORDER BY uploadedAt DESC
   `).all(eventId);
   return rows.map(mapPhotoRow);
+}
+
+export async function getPhoto(photoId: string): Promise<PhotoRecord | null> {
+  if (isLocalDemoMode()) {
+    return getDemoStore().photos.find((photo) => photo.id === photoId) ?? null;
+  }
+  const db = getDb();
+  const row = db.prepare("SELECT * FROM photos WHERE id = ?").get(photoId);
+  return row ? mapPhotoRow(row) : null;
 }
 
 export async function savePhoto(photo: PhotoRecord): Promise<PhotoRecord> {
@@ -411,4 +466,246 @@ export async function updateRaffleDraw(
 
   const row = db.prepare("SELECT * FROM raffle_draws WHERE id = ?").get(drawId);
   return row ? mapRaffleRow(row) : null;
+}
+
+function mapCoordinatorRow(row: Record<string, unknown>): EventCoordinatorRecord {
+  return {
+    eventId: String(row.eventId),
+    email: String(row.email),
+    assignedAt: String(row.assignedAt),
+    assignedBy: String(row.assignedBy),
+  };
+}
+
+export async function listEventCoordinators(eventId: string): Promise<EventCoordinatorRecord[]> {
+  if (isLocalDemoMode()) {
+    return getDemoStore().coordinators
+      .filter((item) => item.eventId === eventId)
+      .sort((a, b) => a.email.localeCompare(b.email));
+  }
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT * FROM event_coordinators
+    WHERE eventId = ?
+    ORDER BY email ASC
+  `).all(eventId);
+  return rows.map(mapCoordinatorRow);
+}
+
+export async function listEventsForCoordinator(email: string): Promise<EventRecord[]> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (isLocalDemoMode()) {
+    const assignedEventIds = new Set(
+      getDemoStore().coordinators
+        .filter((item) => item.email.toLowerCase() === normalizedEmail)
+        .map((item) => item.eventId)
+    );
+    const events = getDemoStore().events.filter((item) => assignedEventIds.has(item.id));
+    return sortEvents(events);
+  }
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT e.* FROM events e
+    INNER JOIN event_coordinators ec ON e.id = ec.eventId
+    WHERE LOWER(ec.email) = ?
+    ORDER BY e.status ASC, e.startsAt ASC
+  `).all(normalizedEmail);
+  return sortEvents(rows.map(mapEventRow));
+}
+
+export async function isUserCoordinatorForEvent(eventId: string, email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (isLocalDemoMode()) {
+    return getDemoStore().coordinators.some(
+      (item) => item.eventId === eventId && item.email.toLowerCase() === normalizedEmail
+    );
+  }
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT 1 FROM event_coordinators
+    WHERE eventId = ? AND LOWER(email) = ?
+    LIMIT 1
+  `).get(eventId, normalizedEmail);
+  return Boolean(row);
+}
+
+export async function isUserCoordinatorAny(email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (isLocalDemoMode()) {
+    return getDemoStore().coordinators.some(
+      (item) => item.email.toLowerCase() === normalizedEmail
+    );
+  }
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT 1 FROM event_coordinators
+    WHERE LOWER(email) = ?
+    LIMIT 1
+  `).get(normalizedEmail);
+  return Boolean(row);
+}
+
+export async function assignEventCoordinator(
+  eventId: string,
+  email: string,
+  assignedBy: string,
+): Promise<EventCoordinatorRecord> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const assignedAt = new Date().toISOString();
+  const record: EventCoordinatorRecord = {
+    eventId,
+    email: normalizedEmail,
+    assignedAt,
+    assignedBy,
+  };
+
+  if (isLocalDemoMode()) {
+    const store = getDemoStore();
+    const existingIndex = store.coordinators.findIndex(
+      (item) => item.eventId === eventId && item.email.toLowerCase() === normalizedEmail
+    );
+    if (existingIndex >= 0) {
+      store.coordinators[existingIndex] = record;
+    } else {
+      store.coordinators.push(record);
+    }
+    return record;
+  }
+
+  const db = getDb();
+  const stmt = db.prepare(`
+    INSERT INTO event_coordinators (eventId, email, assignedAt, assignedBy)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(eventId, email) DO UPDATE SET
+      assignedAt = excluded.assignedAt,
+      assignedBy = excluded.assignedBy
+  `);
+  stmt.run(eventId, normalizedEmail, assignedAt, assignedBy);
+  return record;
+}
+
+export async function removeEventCoordinator(eventId: string, email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (isLocalDemoMode()) {
+    const store = getDemoStore();
+    const beforeCount = store.coordinators.length;
+    store.coordinators = store.coordinators.filter(
+      (item) => !(item.eventId === eventId && item.email.toLowerCase() === normalizedEmail)
+    );
+    return store.coordinators.length < beforeCount;
+  }
+
+  const db = getDb();
+  const stmt = db.prepare(`
+    DELETE FROM event_coordinators
+    WHERE eventId = ? AND LOWER(email) = ?
+  `);
+  const result = stmt.run(eventId, normalizedEmail);
+  return Number(result.changes) > 0;
+}
+
+export async function listEventCreators(): Promise<EventCreatorRecord[]> {
+  if (isLocalDemoMode()) {
+    const store = getDemoStore();
+    return store.eventCreators.map((creator) => {
+      const event = store.events.find((e) => e.id === creator.eventId);
+      return {
+        ...creator,
+        eventName: event?.name ?? null,
+      };
+    });
+  }
+
+  const db = getDb();
+  const rows = db.prepare(`
+    SELECT ec.email, ec.name, ec.eventId, ec.createdAt, e.name as eventName
+    FROM event_creators ec
+    LEFT JOIN events e ON ec.eventId = e.id
+    ORDER BY ec.createdAt DESC
+  `).all() as Record<string, unknown>[];
+
+  return rows.map((row) => ({
+    email: String(row.email),
+    name: row.name ? String(row.name) : null,
+    eventId: row.eventId ? String(row.eventId) : null,
+    eventName: row.eventName ? String(row.eventName) : null,
+    createdAt: String(row.createdAt),
+  }));
+}
+
+export async function isUserOnCreatorList(email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (isLocalDemoMode()) {
+    return getDemoStore().eventCreators.some(
+      (c) => c.email.toLowerCase() === normalizedEmail
+    );
+  }
+
+  const db = getDb();
+  const row = db.prepare(`
+    SELECT 1 FROM event_creators
+    WHERE LOWER(email) = ?
+    LIMIT 1
+  `).get(normalizedEmail);
+
+  return Boolean(row);
+}
+
+export async function recordEventCreator(
+  email: string,
+  name: string | null,
+  eventId: string,
+): Promise<void> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const createdAt = new Date().toISOString();
+
+  if (isLocalDemoMode()) {
+    const store = getDemoStore();
+    const existingIndex = store.eventCreators.findIndex(
+      (c) => c.email.toLowerCase() === normalizedEmail
+    );
+    const record: EventCreatorRecord = {
+      email: normalizedEmail,
+      name,
+      eventId,
+      createdAt,
+    };
+    if (existingIndex >= 0) {
+      store.eventCreators[existingIndex] = record;
+    } else {
+      store.eventCreators.push(record);
+    }
+    return;
+  }
+
+  const db = getDb();
+  const stmt = db.prepare(`
+    INSERT INTO event_creators (email, name, eventId, createdAt)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(email) DO UPDATE SET
+      name = excluded.name,
+      eventId = excluded.eventId,
+      createdAt = excluded.createdAt
+  `);
+  stmt.run(normalizedEmail, name, eventId, createdAt);
+}
+
+export async function removeUserFromCreatorList(email: string): Promise<boolean> {
+  const normalizedEmail = email.trim().toLowerCase();
+  if (isLocalDemoMode()) {
+    const store = getDemoStore();
+    const beforeCount = store.eventCreators.length;
+    store.eventCreators = store.eventCreators.filter(
+      (c) => c.email.toLowerCase() !== normalizedEmail
+    );
+    return store.eventCreators.length < beforeCount;
+  }
+
+  const db = getDb();
+  const stmt = db.prepare(`
+    DELETE FROM event_creators
+    WHERE LOWER(email) = ?
+  `);
+  const result = stmt.run(normalizedEmail);
+  return Number(result.changes) > 0;
 }

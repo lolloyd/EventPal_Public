@@ -1,45 +1,45 @@
 @import "tailwindcss";
 
 @theme {
-  --font-serif: "Bodoni Moda", Georgia, serif;
-  --font-sans: "Hanken Grotesk", system-ui, -apple-system, sans-serif;
-  --font-display-hero: "Bodoni Moda", Georgia, serif;
-  --font-body: "Hanken Grotesk", system-ui, sans-serif;
+  --font-serif: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-sans: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display-hero: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-body: "Hanken Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 
-  --color-surface: #faf9f3;
-  --color-surface-dim: #dbdad4;
-  --color-surface-bright: #faf9f3;
-  --color-surface-container-lowest: #ffffff;
-  --color-surface-container-low: #f5f4ee;
-  --color-surface-container: #efeee8;
-  --color-surface-container-high: #e9e8e2;
-  --color-surface-container-highest: #e3e3dd;
-  --color-on-surface: #1b1c19;
-  --color-on-surface-variant: #58423d;
-  --color-inverse-surface: #30312d;
-  --color-inverse-on-surface: #f2f1eb;
-  --color-outline: #8b716c;
-  --color-outline-variant: #dfc0b9;
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-on-surface: var(--on-surface);
+  --color-on-surface-variant: var(--on-surface-variant);
+  --color-inverse-surface: var(--inverse-surface);
+  --color-inverse-on-surface: var(--inverse-on-surface);
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
   --color-primary: #c85038;
   --color-primary-dark: #a73823;
   --color-primary-container: #c85038;
   --color-on-primary: #ffffff;
   --color-primary-fixed: #ffdad3;
   --color-primary-fixed-dim: #ffb4a5;
-  --color-secondary: #18372f;
-  --color-secondary-container: #c5e7db;
+  --color-secondary: var(--secondary);
+  --color-secondary-container: var(--secondary-container);
   --color-on-secondary: #ffffff;
   --color-secondary-fixed: #c8eade;
   --color-secondary-fixed-dim: #accec2;
-  --color-tertiary: #7a5800;
-  --color-tertiary-fixed: #ffdea4;
-  --color-tertiary-fixed-dim: #efbf62;
-  --color-on-tertiary-fixed: #261900;
-  --color-charcoal-ink: #111816;
-  --color-paper-bright: #faf9f5;
-  --color-electric-lime: #a3e635;
+  --color-tertiary: #b45309;
+  --color-tertiary-fixed: #fde68a;
+  --color-tertiary-fixed-dim: #fcd34d;
+  --color-on-tertiary-fixed: #451a03;
+  --color-charcoal-ink: var(--charcoal-ink);
+  --color-paper-bright: var(--paper-bright);
+  --color-electric-lime: #84cc16;
   --color-chromatic-violet: #7c3aed;
-  --color-slate-blue: #82a6c4;
+  --color-slate-blue: #334155;
 }
 
 .font-display-hero,
@@ -74,19 +74,19 @@
 }
 
 .shadow-brutal-sm {
-  box-shadow: 2px 2px 0px #111816;
+  box-shadow: 2px 2px 0px var(--brutal-shadow, #111816);
 }
 
 .shadow-brutal {
-  box-shadow: 3px 3px 0px #111816;
+  box-shadow: 3px 3px 0px var(--brutal-shadow, #111816);
 }
 
 .shadow-brutal-lg {
-  box-shadow: 4px 4px 0px #111816;
+  box-shadow: 4px 4px 0px var(--brutal-shadow, #111816);
 }
 
 .shadow-brutal-xl {
-  box-shadow: 6px 6px 0px #111816;
+  box-shadow: 6px 6px 0px var(--brutal-shadow, #111816);
 }
 
 .shadow-brutal-coral {
@@ -95,6 +95,13 @@
 
 .shadow-brutal-amber {
   box-shadow: 4px 4px 0px #dfb155;
+}
+
+@layer base {
+  a {
+    color: inherit;
+    text-decoration: inherit;
+  }
 }
 
 .btn-brutal {
@@ -108,11 +115,34 @@
 }
 
 :root,
+html[data-theme="light"],
+html:not([data-theme="dark"]),
 .qr-poster {
   color-scheme: light;
-  --ink: #111816;
-  --ink-rgb: 17 24 22;
-  --paper: #faf9f3;
+  --surface: #faf9f6;
+  --surface-dim: #e5e5dc;
+  --surface-bright: #ffffff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #f5f4ee;
+  --surface-container: #edece4;
+  --surface-container-high: #e3e2d9;
+  --surface-container-highest: #d9d8cd;
+  --on-surface: #111827;
+  --on-surface-variant: #4b5563;
+  --inverse-surface: #1f2937;
+  --inverse-on-surface: #f9fafb;
+  --outline: #9ca3af;
+  --outline-variant: #e5e7eb;
+  --charcoal-ink: #111827;
+  --paper-bright: #ffffff;
+  --secondary: #0f3a33;
+  --secondary-container: #c5e7db;
+  --brutal-shadow: #111816;
+
+  /* Legacy aliases */
+  --ink: #111827;
+  --ink-rgb: 17 24 39;
+  --paper: #faf9f6;
   --canvas: #faf9f5;
   --canvas-rgb: 250 249 245;
   --white: #ffffff;
@@ -123,16 +153,12 @@
   --orange: #c85038;
   --blue: #82a6c4;
   --yellow: #ffdea4;
-  --line: rgba(17, 24, 22, 0.18);
+  --line: rgba(17, 24, 39, 0.15);
   --tint: #efeee8;
   --surface-muted: #f5f4ee;
   --surface-hover: #faf9f5;
   --surface-sunken: #e9e8e2;
   --accent-text: #c85038;
-  --surface-muted: #f5f7f2;
-  --surface-hover: #fbfcf8;
-  --surface-sunken: #e6ebe4;
-  --accent-text: #a64d36;
   --success-bg: #d9ecdf;
   --success-text: #24603b;
   --warning-bg: #f7e9c7;
@@ -148,41 +174,139 @@
   --hero-c: #d8e5e8;
 }
 
-/* Printing always uses the light palette. */
-@media screen {
-  :root[data-theme="dark"] {
-    color-scheme: dark;
-    --ink: #e3ebe6;
-    --ink-rgb: 227 235 230;
-    --paper: #0e1a18;
-    --canvas: #0f1c19;
-    --canvas-rgb: 15 28 25;
-    --white: #162925;
-    --white-rgb: 22 41 37;
-    --green: #8dcfb6;
-    --green-rgb: 141 207 182;
-    --green-hover: #b3e2cf;
-    --orange: #ee7c5c;
-    --line: rgba(227, 235, 230, 0.16);
-    --tint: #1f3a34;
-    --surface-muted: #1a302b;
-    --surface-hover: #1b322d;
-    --surface-sunken: #1c322d;
-    --accent-text: #f29a80;
-    --success-bg: #1d4432;
-    --success-text: #93d9ae;
-    --warning-bg: #4a3b14;
-    --warning-text: #f3d98d;
-    --neutral-bg: #2a3531;
-    --neutral-text: #b8c3bd;
-    --danger-text: #ff9c88;
-    --danger-tint: #3a231e;
-    --notice-bg: #3a2620;
-    --notice-text: #ffb8a3;
-    --hero-a: #173a31;
-    --hero-b: #12241f;
-    --hero-c: #16303a;
-  }
+html[data-theme="dark"],
+html.dark,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface: #0e1312;
+  --surface-dim: #090d0c;
+  --surface-bright: #17201e;
+  --surface-container-lowest: #080c0b;
+  --surface-container-low: #131a19;
+  --surface-container: #18211f;
+  --surface-container-high: #202b28;
+  --surface-container-highest: #283633;
+  --on-surface: #f3f4f6;
+  --on-surface-variant: #9ca3af;
+  --inverse-surface: #f3f4f6;
+  --inverse-on-surface: #111827;
+  --outline: #6b7280;
+  --outline-variant: #283633;
+  --charcoal-ink: #f3f4f6;
+  --paper-bright: #141c1a;
+  --secondary: #163e36;
+  --secondary-container: #102d27;
+  --brutal-shadow: rgba(0, 0, 0, 0.9);
+
+  /* Legacy aliases */
+  --ink: #f3f4f6;
+  --ink-rgb: 243 244 246;
+  --paper: #0e1312;
+  --canvas: #0e1312;
+  --canvas-rgb: 14 19 18;
+  --white: #141c1a;
+  --white-rgb: 20 28 26;
+  --green: #8dcfb6;
+  --green-rgb: 141 207 182;
+  --green-hover: #b3e2cf;
+  --orange: #ee7c5c;
+  --line: rgba(243, 244, 246, 0.18);
+  --tint: #1c2725;
+  --surface-muted: #151d1b;
+  --surface-hover: #1c2624;
+  --surface-sunken: #101615;
+  --accent-text: #ee7c5c;
+  --success-bg: #1d4432;
+  --success-text: #93d9ae;
+  --warning-bg: #4a3b14;
+  --warning-text: #f3d98d;
+  --neutral-bg: #2a3531;
+  --neutral-text: #b8c3bd;
+  --danger-text: #ff9c88;
+  --danger-tint: #3a231e;
+  --notice-bg: #3a2620;
+  --notice-text: #ffb8a3;
+  --hero-a: #173a31;
+  --hero-b: #12241f;
+  --hero-c: #16303a;
+}
+
+/* Dark mode overrides for brutalist arbitrary color utilities */
+html[data-theme="dark"] .bg-\[\#FAF9F3\],
+html.dark .bg-\[\#FAF9F3\],
+html[data-theme="dark"] .bg-\[\#FAF9F3\]\/95,
+html.dark .bg-\[\#FAF9F3\]\/95,
+html[data-theme="dark"] .bg-\[\#FAF9F3\]\/75,
+html.dark .bg-\[\#FAF9F3\]\/75,
+html[data-theme="dark"] .bg-\[\#fbfbf9\],
+html.dark .bg-\[\#fbfbf9\],
+html[data-theme="dark"] .bg-\[\#FFFFFF\],
+html.dark .bg-\[\#FFFFFF\],
+html[data-theme="dark"] .bg-white,
+html.dark .bg-white,
+html[data-theme="dark"] .bg-white\/95,
+html.dark .bg-white\/95 {
+  background-color: var(--surface) !important;
+}
+
+html[data-theme="dark"] .text-\[\#111816\],
+html.dark .text-\[\#111816\],
+html[data-theme="dark"] .text-\[\#111816\]\/85,
+html.dark .text-\[\#111816\]\/85,
+html[data-theme="dark"] .text-\[\#111816\]\/70,
+html.dark .text-\[\#111816\]\/70,
+html[data-theme="dark"] .text-slate-900,
+html.dark .text-slate-900,
+html[data-theme="dark"] .text-slate-950,
+html.dark .text-slate-950 {
+  color: var(--on-surface) !important;
+}
+
+html[data-theme="dark"] .text-slate-600,
+html.dark .text-slate-600,
+html[data-theme="dark"] .text-slate-500,
+html.dark .text-slate-500 {
+  color: var(--on-surface-variant) !important;
+}
+
+html[data-theme="dark"] .border-\[\#111816\],
+html.dark .border-\[\#111816\],
+html[data-theme="dark"] .border-slate-200,
+html.dark .border-slate-200,
+html[data-theme="dark"] .border-slate-200\/80,
+html.dark .border-slate-200\/80 {
+  border-color: rgba(243, 244, 246, 0.22) !important;
+}
+
+html[data-theme="dark"] .divide-\[\#111816\] > :not([hidden]) ~ :not([hidden]),
+html.dark .divide-\[\#111816\] > :not([hidden]) ~ :not([hidden]) {
+  border-color: rgba(243, 244, 246, 0.18) !important;
+}
+
+html[data-theme="dark"] .shadow-\[2px_2px_0px_\#111816\],
+html.dark .shadow-\[2px_2px_0px_\#111816\],
+html[data-theme="dark"] .shadow-\[3px_3px_0px_\#111816\],
+html.dark .shadow-\[3px_3px_0px_\#111816\],
+html[data-theme="dark"] .shadow-\[4px_4px_0px_\#111816\],
+html.dark .shadow-\[4px_4px_0px_\#111816\],
+html.dark .shadow-\[8px_8px_0px_\#111816\] {
+  box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.85) !important;
+}
+
+/* High-contrast QR Badge download button */
+.qr-badge-btn,
+html[data-theme="dark"] .qr-badge-btn,
+html.dark .qr-badge-btn {
+  background-color: #dfb155 !important;
+  color: #000000 !important;
+  border-color: #111816 !important;
+}
+
+.qr-badge-btn *,
+html[data-theme="dark"] .qr-badge-btn *,
+html.dark .qr-badge-btn * {
+  color: #000000 !important;
+  stroke: #000000 !important;
 }
 
 @theme inline {
@@ -208,10 +332,6 @@ h1, h2, h3, h4, .admin-title, .font-serif {
   font-family: "Bodoni Moda", Georgia, serif;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
 
 .portal-shell {
   display: flex;
@@ -291,9 +411,9 @@ a {
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 0;
-  background: var(--canvas);
-  color: rgb(var(--ink-rgb) / 0.75);
-  box-shadow: 2px 2px 0px #111816;
+  background: var(--surface-container-high);
+  color: var(--charcoal-ink);
+  box-shadow: 2px 2px 0px var(--brutal-shadow, #111816);
   cursor: pointer;
   transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
@@ -310,10 +430,14 @@ a {
 }
 
 .theme-toggle-sun,
+html[data-theme="dark"] .theme-toggle-moon,
+html.dark .theme-toggle-moon,
 :root[data-theme="dark"] .theme-toggle-moon {
   display: none;
 }
 
+html[data-theme="dark"] .theme-toggle-sun,
+html.dark .theme-toggle-sun,
 :root[data-theme="dark"] .theme-toggle-sun {
   display: block;
 }
@@ -1084,11 +1208,11 @@ a:focus-visible {
   width: 100%;
   min-height: 44px;
   padding: 10px 14px;
-  border: 2px solid var(--color-charcoal-ink, #111816);
+  border: 2px solid var(--charcoal-ink);
   border-radius: 0;
   outline: 0;
-  background: var(--color-surface, #FAF9F3);
-  color: var(--color-charcoal-ink, #111816);
+  background: var(--paper-bright);
+  color: var(--on-surface);
   font: inherit;
   font-size: 13px;
   font-weight: 500;
@@ -1104,13 +1228,14 @@ a:focus-visible {
 .form-field input:focus,
 .form-field textarea:focus,
 .form-field select:focus {
-  border-color: var(--color-secondary, #C85038);
-  box-shadow: 2px 2px 0px var(--color-secondary, #C85038);
+  border-color: #c85038;
+  box-shadow: 2px 2px 0px #c85038;
 }
 
 .form-field input::placeholder,
 .form-field textarea::placeholder {
-  color: rgba(17, 24, 22, 0.45);
+  color: var(--on-surface-variant);
+  opacity: 0.65;
 }
 
 .form-field-row {
@@ -1514,9 +1639,9 @@ a:focus-visible {
   aspect-ratio: 1.45;
   overflow: hidden;
   place-items: center;
-  border: 2px dashed var(--color-charcoal-ink, #111816);
+  border: 2px dashed var(--charcoal-ink);
   border-radius: 0;
-  background: var(--color-surface, #FAF9F3);
+  background: var(--surface-container-low);
 }
 
 .cover-preview img {
@@ -1529,7 +1654,7 @@ a:focus-visible {
   display: grid;
   justify-items: center;
   gap: 10px;
-  color: rgba(17, 24, 22, 0.58);
+  color: var(--on-surface-variant);
   font-size: 11px;
   font-weight: 700;
   text-transform: uppercase;

@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { clearSessionCookie } from "@/lib/session";
+import { getPublicOrigin } from "@/lib/event-auth";
 
 export async function GET(request: Request) {
-  const { origin } = new URL(request.url);
+  const publicOrigin = getPublicOrigin(request);
   await clearSessionCookie();
-  return NextResponse.redirect(new URL("/", origin));
+  return NextResponse.redirect(new URL("/", publicOrigin));
 }
 
 export async function POST() {

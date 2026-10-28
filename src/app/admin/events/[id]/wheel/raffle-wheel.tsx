@@ -352,7 +352,7 @@ export function RaffleWheel({
               PLATE 04 // LIVE RAFFLE WHEEL
             </span>
             <span className="text-[10px] font-serif italic text-[#FFDEA4]/80 font-bold hidden sm:inline">
-              Bawal Epal; use heyPal!
+              Don't be Epal; use heyPal!
             </span>
           </div>
           <h1 className="font-['Bodoni_Moda',serif] text-2xl sm:text-3xl font-medium italic text-[#FAF9F3]">{eventName}</h1>

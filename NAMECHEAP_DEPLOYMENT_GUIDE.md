@@ -90,13 +90,13 @@ This automated script performs the following tasks:
 - Copies the Phusion Passenger entrypoint (`app.js`).
 - Pre-creates the `Events/` directories (`covers/`, `photos/`, `exports/`, `database/`).
 - Creates `tmp/restart.txt` for Phusion Passenger application reloading.
-- Compresses everything into a single, compact archive: **`heypal-deploy.zip` (~9MB)**.
+- Compresses everything into a single, datestamped archive: **`heypal-deploy_YYYYMMDD.zip` (e.g., `heypal-deploy_20261027.zip`, ~9MB)**.
 
 ---
 
 ## 4. Step 2: Connecting via FTP & Uploading to Namecheap
 
-Uploading thousands of loose files over raw FTP can cause timeouts and file corruption. **Uploading the single `heypal-deploy.zip` archive takes less than 30 seconds.**
+Uploading thousands of loose files over raw FTP can cause timeouts and file corruption. **Uploading the single `heypal-deploy_YYYYMMDD.zip` archive takes less than 30 seconds.**
 
 ### A. Locate Your Namecheap FTP Credentials
 1. Log into your **Namecheap Account** -> Go to **Hosting List** -> Click **Go to cPanel**.
@@ -125,8 +125,8 @@ Uploading thousands of loose files over raw FTP can cause timeouts and file corr
 2. Right-click and choose **Create directory** -> Name it:
    `heypal`
 3. Double-click to open `/home/<your_cpanel_username>/heypal/`.
-4. In your **Local Site** panel (computer side), locate `heypal-deploy.zip`.
-5. Drag and drop **`heypal-deploy.zip`** into the remote `/home/<your_cpanel_username>/heypal/` folder.
+4. In your **Local Site** panel (computer side), locate `heypal-deploy_YYYYMMDD.zip` (e.g. `heypal-deploy_20261027.zip`).
+5. Drag and drop **`heypal-deploy_YYYYMMDD.zip`** into the remote `/home/<your_cpanel_username>/heypal/` folder.
 6. Wait for the upload to complete (100% transfer status).
 
 ---
@@ -135,11 +135,11 @@ Uploading thousands of loose files over raw FTP can cause timeouts and file corr
 
 1. In your browser, open **cPanel** -> Under the **Files** section, click **File Manager**.
 2. In the left folder tree, navigate to `/home/<your_cpanel_username>/heypal`.
-3. You will see `heypal-deploy.zip`.
-4. Click on `heypal-deploy.zip` to select it, then click **Extract** in the top toolbar (or right-click -> **Extract**).
+3. You will see `heypal-deploy_YYYYMMDD.zip`.
+4. Click on `heypal-deploy_YYYYMMDD.zip` to select it, then click **Extract** in the top toolbar (or right-click -> **Extract**).
 5. In the confirmation dialog, ensure the extract directory is `/home/<your_cpanel_username>/heypal`, then click **Extract File(s)**.
 6. Once extraction finishes, click **Close**.
-7. *(Optional)* Select `heypal-deploy.zip` and click **Delete** (check "Skip the trash and permanently delete") to reclaim disk space.
+7. *(Optional)* Select `heypal-deploy_YYYYMMDD.zip` and click **Delete** (check "Skip the trash and permanently delete") to reclaim disk space.
 8. Verify that the following files and folders are present directly inside `heypal/`:
    - `app.js`
    - `server.js`
@@ -183,16 +183,22 @@ In the same **Setup Node.js App** screen for `heypal`:
 | :--- | :--- | :--- |
 | `NODE_ENV` | `production` | Enables production caching and optimizations. |
 | `PORT` | `3000` | Port for the internal HTTP listener. |
+| `NODE_OPTIONS` | `--v8-pool-size=1 --max-old-space-size=384` | **Critical for CloudLinux:** Limits V8 background worker threads and RAM to prevent `pthread_create: Resource temporarily unavailable` thread quota crashes. |
+| `UV_THREADPOOL_SIZE` | `1` | **Critical for CloudLinux:** Limits libuv I/O thread pool to prevent hitting shared hosting thread limits. |
 | `HEYPAL_PUBLIC_ORIGIN` | `https://heypal.yourdomain.com` | Your live HTTPS domain (no trailing slash). Used for OAuth and media URLs. |
 | `GOOGLE_CLIENT_ID` | `12345-xxx.apps.googleusercontent.com` | Google OAuth 2.0 Web Client ID. |
 | `GOOGLE_CLIENT_SECRET` | `GOCSPX-xxxxxxxxx` | Google OAuth 2.0 Client Secret. |
 | `SESSION_SECRET` | *(64-character random string)* | Secret key used to sign HMAC-SHA256 session tokens. Generate with `node -e "console.log(crypto.randomBytes(32).toString('hex'))"`. |
 | `HEYPAL_ADMIN_EMAILS` | `lloyd.miguel@gmail.com` | Comma-separated list of organizer/admin emails granted dashboard access. |
 | `HEYPAL_ALLOWED_EMAIL_DOMAINS` | `*` | Allowed Google domains (e.g. `*` for public access, or `yourcompany.com`). |
-| `HEYPAL_STORAGE_DIR` | `/home/<user>/heypal/Events` | Absolute path to the persistent media storage folder. Replace `<user>` with your cPanel username. |
-| `HEYPAL_DB_PATH` | `/home/<user>/heypal/Events/database/heypal.db` | Absolute path to the persistent SQLite database file. Replace `<user>` with your cPanel username. |
+| `HEYPAL_STORAGE_DIR` | `/home/<user>/heypal.yourdomain.com/Events` | Absolute path to the persistent media storage folder. Replace `<user>` with your cPanel username. |
+| `HEYPAL_DB_PATH` | `/home/<user>/heypal.yourdomain.com/Events/database/heypal.db` | Absolute path to the persistent SQLite database file. Replace `<user>` with your cPanel username. |
 
 3. Click **SAVE** at the top right of the page to apply the environment variables.
+
+> [!IMPORTANT]
+> **Why `NODE_OPTIONS` and `UV_THREADPOOL_SIZE` are essential:**
+> CloudLinux shared hosting restricts process and thread limits (`nproc`) per cPanel user. By default, Node 22 attempts to spawn V8 thread pool workers equal to the host server's CPU cores (often 32–64 cores). Without these two variables, Node exceeds the user quota upon startup, resulting in `node: pthread_create: Resource temporarily unavailable` and `uv_thread_create Assertion failed`. Setting `--v8-pool-size=1` and `UV_THREADPOOL_SIZE=1` keeps the application lightweight and completely within CloudLinux resource limits.
 
 ---
 
@@ -236,7 +242,7 @@ Google OAuth and modern camera/photo upload APIs **require HTTPS**.
 
 ### B. Verification Checklist
 Visit your domain (`https://heypal.yourdomain.com`) and test the end-to-end flow:
-- [ ] **Homepage**: Verify the landing page loads with branding: *"Bawal Epal; use heyPal!"*.
+- [ ] **Homepage**: Verify the landing page loads with branding: *"Don't be Epal; use heyPal!"*.
 - [ ] **Google Sign-in**: Click **Sign in with Google** -> Authenticate with `lloyd.miguel@gmail.com` -> Verify redirect to `/admin/events`.
 - [ ] **Event Creation**: Click **New Event** -> Fill in details and upload a cover photo -> Click **Create Event**.
 - [ ] **Media Persistence**: In cPanel File Manager, check `/home/<user>/heypal/Events/covers/` to verify the image was saved.
@@ -277,6 +283,33 @@ Whenever you make improvements or updates to your code:
   4. It will now succeed immediately!
 - **Permanent Solution**:
   Our updated bundler (`npm run bundle:deploy`) packages standalone modules into `standalone_modules/` instead of `node_modules/`, and [app.js](app.js) automatically registers `standalone_modules/` into Node's search path. This permanently eliminates this CloudLinux conflict.
+
+### Issue: "Error 508: Resource Limit Reached" (Entry Processes / EP Spike)
+- **Cause**: CloudLinux reports 508 when concurrent active connections exceed **30 Entry Processes (EP)**. On Namecheap, this happens when:
+  1. Phusion Passenger attempts to spawn multiple Node worker processes under concurrent traffic.
+  2. Orphaned or stale Node processes from previous restarts are still lingering in the background.
+  3. The browser requests dozens of unthrottled image files simultaneously.
+- **Immediate Recovery (10 seconds)**:
+  1. Open cPanel **Terminal** (or SSH).
+  2. Kill lingering orphaned Node processes:
+     ```bash
+     pkill -u $USER -f node
+     ```
+  3. Go to **Setup Node.js App** in cPanel and click **Restart**.
+- **Permanent Solution (`.htaccess`)**:
+  Add the following block to the `.htaccess` file in your application directory:
+  ```apache
+  # Cap Passenger to a single worker process to prevent Entry Process queues
+  PassengerMaxInstances 1
+  PassengerMinInstances 1
+  PassengerSpawnMethod direct
+  PassengerHighPerformance on
+  PassengerAppGroupName heypal
+  ```
+- **Memory Ceiling Configuration**:
+  In cPanel **Setup Node.js App**, under **Environment Variables**, add:
+  * Name: `NODE_OPTIONS`
+  * Value: `--max-old-space-size=384`
 
 ### Issue: "503 Service Unavailable" or "Passenger Phusion Error"
 - **Cause**: Startup script syntax error or missing port binding.

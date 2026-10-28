@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { isHeyPalAdminUser, isOrganizationUser } from "@/lib/event-auth";
+import { isHeyPalAdminUser, isOrganizationUser, getPublicOrigin } from "@/lib/event-auth";
 import { setSessionCookie } from "@/lib/session";
 
 interface GoogleTokenResponse {
@@ -24,17 +24,18 @@ interface GoogleUserInfo {
 }
 
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const publicOrigin = getPublicOrigin(request);
   const code = searchParams.get("code");
   const state = searchParams.get("state");
   const error = searchParams.get("error");
 
   if (error) {
-    return NextResponse.redirect(new URL(`/?error=oauth_${encodeURIComponent(error)}`, origin));
+    return NextResponse.redirect(new URL(`/?error=oauth_${encodeURIComponent(error)}`, publicOrigin));
   }
 
   if (!code || !state) {
-    return NextResponse.redirect(new URL("/?error=missing_oauth_parameters", origin));
+    return NextResponse.redirect(new URL("/?error=missing_oauth_parameters", publicOrigin));
   }
 
   const cookieStore = await cookies();
@@ -42,7 +43,7 @@ export async function GET(request: Request) {
   cookieStore.delete("heypal_oauth_state");
 
   if (!savedState || savedState !== state) {
-    return NextResponse.redirect(new URL("/?error=invalid_oauth_state", origin));
+    return NextResponse.redirect(new URL("/?error=invalid_oauth_state", publicOrigin));
   }
 
   let callbackUrl = "/events";
@@ -60,10 +61,10 @@ export async function GET(request: Request) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   if (!clientId || !clientSecret) {
-    return NextResponse.redirect(new URL("/?error=google_credentials_missing", origin));
+    return NextResponse.redirect(new URL("/?error=google_credentials_missing", publicOrigin));
   }
 
-  const redirectUri = `${origin}/api/auth/callback/google`;
+  const redirectUri = `${publicOrigin}/api/auth/callback/google`;
 
   // Exchange code for token
   const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
@@ -81,7 +82,7 @@ export async function GET(request: Request) {
   if (!tokenResponse.ok) {
     const errorBody = await tokenResponse.text();
     console.error("Failed to exchange Google OAuth code:", errorBody);
-    return NextResponse.redirect(new URL("/?error=token_exchange_failed", origin));
+    return NextResponse.redirect(new URL("/?error=token_exchange_failed", publicOrigin));
   }
 
   const tokenData = (await tokenResponse.json()) as GoogleTokenResponse;
@@ -92,12 +93,12 @@ export async function GET(request: Request) {
   });
 
   if (!userinfoResponse.ok) {
-    return NextResponse.redirect(new URL("/?error=failed_fetching_userinfo", origin));
+    return NextResponse.redirect(new URL("/?error=failed_fetching_userinfo", publicOrigin));
   }
 
   const userinfo = (await userinfoResponse.json()) as GoogleUserInfo;
   if (!userinfo.email) {
-    return NextResponse.redirect(new URL("/?error=missing_email_claim", origin));
+    return NextResponse.redirect(new URL("/?error=missing_email_claim", publicOrigin));
   }
 
   const email = userinfo.email.trim().toLowerCase();
@@ -106,7 +107,7 @@ export async function GET(request: Request) {
   // Validate allowed organization domain (admins are always permitted)
   if (!isAdmin && !isOrganizationUser([email])) {
     return NextResponse.redirect(
-      new URL(`/?error=unauthorized_domain&email=${encodeURIComponent(email)}`, origin),
+      new URL(`/?error=unauthorized_domain&email=${encodeURIComponent(email)}`, publicOrigin),
     );
   }
 
@@ -119,5 +120,5 @@ export async function GET(request: Request) {
     isAdmin,
   });
 
-  return NextResponse.redirect(new URL(callbackUrl, origin));
+  return NextResponse.redirect(new URL(callbackUrl, publicOrigin));
 }

@@ -3,7 +3,7 @@ import path from "node:path";
 import { Readable } from "node:stream";
 import { isLocalDemoMode } from "@/lib/event-auth";
 import { getDemoPhotoFile, removeDemoPhotoFile } from "@/lib/demo-photo-storage";
-import { maxPhotoBytes, photoTypes, validatePhotoSignature } from "@/lib/photo-validation";
+import { detectPhotoType, maxPhotoBytes, photoTypes, validatePhotoSignature } from "@/lib/photo-validation";
 
 export function getStorageRoot(): string {
   const customDir = process.env.HEYPAL_STORAGE_DIR;
@@ -48,21 +48,20 @@ export async function ensureStorageDirectories(): Promise<void> {
 }
 
 export async function uploadEventCover(file: File): Promise<string> {
-  const extensionByType: Record<string, string> = {
-    "image/jpeg": "jpg",
-    "image/png": "png",
-    "image/webp": "webp",
-  };
-  const extension = extensionByType[file.type];
-  if (!extension || file.size > 5 * 1024 * 1024 || file.size === 0) {
+  if (file.size > 5 * 1024 * 1024 || file.size === 0) {
     throw new Error("Choose a JPEG, PNG, or WebP image smaller than 5 MB.");
   }
 
   const imageBytes = new Uint8Array(await file.arrayBuffer());
-  if (!validatePhotoSignature(file.type, imageBytes)) {
+  const detectedType = (file.type && file.type in photoTypes)
+    ? (file.type as keyof typeof photoTypes)
+    : detectPhotoType(imageBytes);
+
+  if (!detectedType || !validatePhotoSignature(detectedType, imageBytes)) {
     throw new Error("Choose a valid JPEG, PNG, or WebP image.");
   }
 
+  const extension = photoTypes[detectedType];
   const root = getStorageRoot();
   const coversDir = path.join(root, "covers");
   await fs.promises.mkdir(coversDir, { recursive: true });
@@ -70,8 +69,16 @@ export async function uploadEventCover(file: File): Promise<string> {
   const filename = `${crypto.randomUUID()}.${extension}`;
   const relativeBlobName = `covers/${filename}`;
   const filePath = safeResolveStoragePath(relativeBlobName);
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
 
-  await fs.promises.writeFile(filePath, Buffer.from(imageBytes));
+  try {
+    await fs.promises.writeFile(tempPath, Buffer.from(imageBytes));
+    await fs.promises.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.promises.unlink(tempPath).catch(() => undefined);
+    throw error;
+  }
+
   return relativeBlobName;
 }
 
@@ -100,8 +107,16 @@ export async function saveEventPhoto(
 
   const relativeBlobName = `photos/${eventId}/${photoId}.${extension}`;
   const filePath = safeResolveStoragePath(relativeBlobName);
+  const tempPath = `${filePath}.${process.pid}.${Date.now()}.tmp`;
 
-  await fs.promises.writeFile(filePath, Buffer.from(fileBytes));
+  try {
+    await fs.promises.writeFile(tempPath, Buffer.from(fileBytes));
+    await fs.promises.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.promises.unlink(tempPath).catch(() => undefined);
+    console.error("[heypal] Failed to write photo file", { eventId, photoId, error });
+    throw new Error("The photo could not be saved on the server. Please try again.");
+  }
   return { blobName: relativeBlobName, size: fileBytes.byteLength };
 }
 

@@ -54,5 +54,6 @@ next-env.d.ts
 # deployment archives
 *.zip
 heypal-deploy.zip
+heypal-deploy_*.zip
 
 

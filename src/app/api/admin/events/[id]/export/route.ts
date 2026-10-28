@@ -2,7 +2,7 @@ import { ZipArchive } from "archiver";
 import { PassThrough, Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdmin } from "@/lib/event-auth";
+import { requireEventAccess } from "@/lib/event-auth";
 import { getPhotoExportInfo, openPhotoForExport } from "@/lib/local-storage";
 import { createExportJob, enqueueExportJob, updateExportJob } from "@/lib/export-jobs";
 import { getEvent, listEventPhotos } from "@/lib/event-repository";
@@ -93,13 +93,13 @@ export async function GET(
   request: Request,
   { params }: RouteContext<"/api/admin/events/[id]/export">,
 ) {
+  const { id } = await params;
   try {
-    await requireAdmin();
+    await requireEventAccess(id);
   } catch {
-    return NextResponse.json({ error: "Organizer access is required." }, { status: 403 });
+    return NextResponse.json({ error: "Coordinator or organizer access is required." }, { status: 403 });
   }
 
-  const { id } = await params;
   const event = await getEvent(id);
   if (!event) return NextResponse.json({ error: "Event not found." }, { status: 404 });
   const query = new URL(request.url).searchParams;
@@ -122,14 +122,15 @@ export async function POST(
   request: Request,
   { params }: RouteContext<"/api/admin/events/[id]/export">,
 ) {
-  let user;
-  try {
-    user = await requireAdmin();
-  } catch {
-    return NextResponse.json({ error: "Organizer access is required." }, { status: 403 });
-  }
-
   const { id } = await params;
+  let auth;
+  try {
+    auth = await requireEventAccess(id);
+  } catch {
+    return NextResponse.json({ error: "Coordinator or organizer access is required." }, { status: 403 });
+  }
+  const user = auth.user;
+
   const event = await getEvent(id);
   if (!event) return NextResponse.json({ error: "Event not found." }, { status: 404 });
 

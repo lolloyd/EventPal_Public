@@ -29,6 +29,8 @@ function initSchema(db: DatabaseSync): void {
       location TEXT NOT NULL,
       status TEXT NOT NULL,
       coverImageBlobName TEXT,
+      isPhotoWallPublic INTEGER NOT NULL DEFAULT 0,
+      isPrivate INTEGER NOT NULL DEFAULT 0,
       createdBy TEXT NOT NULL,
       createdAt TEXT NOT NULL,
       updatedAt TEXT NOT NULL
@@ -74,11 +76,37 @@ function initSchema(db: DatabaseSync): void {
       error TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS event_coordinators (
+      eventId TEXT NOT NULL,
+      email TEXT NOT NULL,
+      assignedAt TEXT NOT NULL,
+      assignedBy TEXT NOT NULL,
+      PRIMARY KEY (eventId, email),
+      FOREIGN KEY (eventId) REFERENCES events(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS event_creators (
+      email TEXT PRIMARY KEY,
+      name TEXT,
+      eventId TEXT,
+      createdAt TEXT NOT NULL
+    );
+
     CREATE INDEX IF NOT EXISTS idx_photos_event_status ON photos(eventId, status);
     CREATE INDEX IF NOT EXISTS idx_photos_event_uploaded ON photos(eventId, uploadedAt);
     CREATE INDEX IF NOT EXISTS idx_raffle_draws_event ON raffle_draws(eventId);
     CREATE INDEX IF NOT EXISTS idx_export_jobs_event ON export_jobs(eventId);
+    CREATE INDEX IF NOT EXISTS idx_coordinators_email ON event_coordinators(email);
+    CREATE INDEX IF NOT EXISTS idx_coordinators_event ON event_coordinators(eventId);
+    CREATE INDEX IF NOT EXISTS idx_event_creators_email ON event_creators(email);
   `);
+
+  try {
+    db.exec("ALTER TABLE events ADD COLUMN isPhotoWallPublic INTEGER NOT NULL DEFAULT 0;");
+  } catch {}
+  try {
+    db.exec("ALTER TABLE events ADD COLUMN isPrivate INTEGER NOT NULL DEFAULT 0;");
+  } catch {}
 }
 
 export function getDb(): DatabaseSync {

@@ -4,7 +4,7 @@ import { requireAuthenticated, isLocalDemoMode } from "@/lib/event-auth";
 import { getPhotoReadUrl, getUploadReadUrl } from "@/lib/local-storage";
 import { getEvent, listApprovedEventPhotos } from "@/lib/event-repository";
 
-export const instant = false;
+export const dynamic = "force-dynamic";
 
 async function AttendeeEventContent({
   params,

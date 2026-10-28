@@ -9,7 +9,7 @@ For the people who were there
 
 One shared place for the photos, faces, and little details that make an event yours.
 
-Bawal Epal; use heyPal!
+don't be Epal; use heyPal!
 
 [Continue with your Google account](/api/auth/google?callbackUrl=%2Fevents)
 
@@ -102,7 +102,7 @@ Organizers curate submissions and can enable a public photo wall.
 
 
 
-For the moments that belong to your people.[Bawal Epal; use heyPal!](/events)
+For the moments that belong to your people.[don't be Epal; use heyPal!](/events)
 
 [heyPal!](/)
 

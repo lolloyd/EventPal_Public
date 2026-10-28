@@ -1,11 +1,11 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
   output: "standalone",
-  cacheComponents: true,
-  partialPrefetching: true,
+  outputFileTracingRoot: path.resolve(__dirname),
   turbopack: {
+    root: path.resolve(__dirname),
     rules: {
       "*.css": {
         loaders: ["@tailwindcss/turbopack"],

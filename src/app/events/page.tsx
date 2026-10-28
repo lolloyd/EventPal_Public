@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { ArrowRight, CalendarDays, MapPin, Sparkles, LogOut } from "lucide-react";
-import { requireAuthenticated } from "@/lib/event-auth";
+import { ArrowRight, CalendarDays, MapPin, Sparkles, LogOut, Plus, FolderKanban } from "lucide-react";
+import { requireAuthenticated, isDefaultAdmin } from "@/lib/event-auth";
 import { listEvents } from "@/lib/event-repository";
 import { ThemeToggle } from "@/app/theme";
+import { PrivateEventLookup } from "@/app/events/private-event-lookup";
 
-export const instant = false;
+export const dynamic = "force-dynamic";
 
 function formatDate(startsAt: string, endsAt: string) {
   const start = new Date(startsAt);
@@ -16,7 +17,13 @@ function formatDate(startsAt: string, endsAt: string) {
 
 export default async function EventDirectoryPage() {
   const user = await requireAuthenticated();
-  const events = (await listEvents()).filter((event) => event.status === "active");
+  const isAdmin = isDefaultAdmin(user);
+  const { isUserCoordinatorAny } = await import("@/lib/event-repository");
+  const isCoordinator = user.email ? await isUserCoordinatorAny(user.email) : false;
+  const canManageEvents = isAdmin || isCoordinator;
+
+  // Private events are hidden from the "Find your album" page — accessible only via direct link or QR code
+  const events = (await listEvents()).filter((event) => event.status === "active" && !event.isPrivate);
 
   return (
     <div className="min-h-screen w-full bg-surface text-on-surface antialiased flex flex-col justify-between">
@@ -40,14 +47,32 @@ export default async function EventDirectoryPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <Link
+              href="/admin/events/new"
+              className="btn-brutal inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-primary !text-white text-label-caps uppercase font-bold tracking-wider shadow-brutal-sm hover:bg-primary-dark transition-all text-xs"
+              title="Create your own event gathering"
+            >
+              <Plus className="w-3.5 h-3.5 shrink-0 !text-white" />
+              <span className="!text-white">Create Event</span>
+            </Link>
+            {canManageEvents && (
+              <Link
+                href="/admin"
+                className="btn-brutal inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#18372F] !text-[#FAF9F3] text-label-caps uppercase font-bold tracking-wider shadow-brutal-sm hover:bg-[#112822] border border-[#111816]/30 dark:border-white/20 transition-all text-xs"
+                title={isAdmin ? "Open Director Terminal" : "Open Coordinator Terminal"}
+              >
+                <FolderKanban className="w-3.5 h-3.5 shrink-0 text-[#FFDEA4]" />
+                <span className="!text-[#FAF9F3] font-bold">{isAdmin ? "Director Terminal" : "My Events"}</span>
+              </Link>
+            )}
             <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-surface-container-high border border-charcoal-ink/10 text-xs font-mono">
               <span className="text-on-surface-variant">ATTENDEE:</span>
               <span className="font-bold text-charcoal-ink">{user.isDemo ? "DEMO ATTENDEE" : user.name}</span>
             </div>
             <ThemeToggle />
             <a
-              className="btn-brutal inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high text-charcoal-ink text-label-caps uppercase font-bold tracking-wider shadow-brutal-sm hover:bg-red-500 hover:text-white transition-colors"
+              className="btn-brutal inline-flex items-center gap-1.5 px-3 py-1.5 bg-surface-container-high text-charcoal-ink text-label-caps uppercase font-bold tracking-wider shadow-brutal-sm hover:bg-red-500 hover:text-white transition-colors text-xs"
               href="/api/auth/signout"
               title="Sign out"
             >
@@ -77,12 +102,25 @@ export default async function EventDirectoryPage() {
             </p>
           </div>
 
-          <div className="px-3.5 py-2 bg-tertiary-fixed text-charcoal-ink shadow-brutal-sm border border-charcoal-ink/10">
-            <span className="text-label-caps font-bold tracking-wider uppercase">
-              Bawal Epal; use heyPal!
-            </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/admin/events/new"
+              className="btn-brutal inline-flex items-center gap-2 px-5 py-3 bg-primary text-white font-bold text-sm tracking-wide rounded-none shadow-brutal hover:bg-primary-dark transition-all"
+              title="Initialize a new event gathering"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Create an Event</span>
+            </Link>
+            <div className="px-3.5 py-3 bg-tertiary-fixed text-charcoal-ink shadow-brutal-sm border border-charcoal-ink/10">
+              <span className="text-label-caps font-bold tracking-wider uppercase">
+                Don't be Epal; use heyPal!
+              </span>
+            </div>
           </div>
         </div>
+
+        {/* Private Event Direct Access Box */}
+        <PrivateEventLookup />
 
         {/* Event Cards Grid */}
         {events.length > 0 ? (
@@ -149,6 +187,31 @@ export default async function EventDirectoryPage() {
             </div>
           </div>
         )}
+
+        {/* Hosting CTA for Attendees */}
+        <section className="mt-16 p-8 sm:p-10 bg-paper-bright border border-charcoal-ink/15 shadow-brutal flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="w-2 h-2 rounded-full bg-primary" />
+              <span className="text-label-mono-tag uppercase text-secondary font-bold">
+                HOSTING // INITIATE GATHERING
+              </span>
+            </div>
+            <h2 className="font-display-hero text-2xl sm:text-3xl font-bold text-charcoal-ink mb-1">
+              Hosting a wedding, reunion, or party?
+            </h2>
+            <p className="text-xs sm:text-sm text-on-surface-variant font-mono max-w-2xl leading-relaxed">
+              Create your private gathering space. You will automatically become its Event Coordinator with live QR codes, photo moderation, and communal photo walls.
+            </p>
+          </div>
+          <Link
+            href="/admin/events/new"
+            className="btn-brutal inline-flex items-center gap-2 px-6 py-3.5 bg-primary text-white font-bold text-sm uppercase tracking-wider shadow-brutal hover:bg-primary-dark transition-all shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Create Your Event</span>
+          </Link>
+        </section>
       </main>
 
       {/* ── FOOTER ── */}

@@ -2,7 +2,7 @@
 
 **heyPal!** is a private, mobile-first event photo platform built with **Next.js 16**, **Google Sign-In**, and an embedded **SQLite / Local File Engine**. It is designed to run 100% independently on standard web hosting (specifically **Namecheap Hosting** via cPanel Node.js Application Manager / Phusion Passenger).
 
-*Bawal Epal; use heyPal!*
+*Don't be Epal; use heyPal!*
 
 It includes organizer event management, print-ready QR materials, attendee photo uploads with compression, real-time photo walls, interactive raffle wheel draws, and in-app ZIP photo exports.
 
